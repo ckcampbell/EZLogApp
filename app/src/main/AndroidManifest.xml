@@ -17,7 +17,8 @@
             </intent-filter>
         </activity>
         <activity android:name=".LoginActivity" />
-        <activity android:name=".BatchActivity"></activity>
+        <activity android:name=".BatchActivity" />
+        <activity android:name=".LoggedInMainActivity"></activity>
     </application>
 
 </manifest>
