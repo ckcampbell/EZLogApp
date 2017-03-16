@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">EZLog</string>
+    <string name="button_open_login">Connect to an EZLog System</string>
+    <string name="button_open_batch">Log an Inventory Offline</string>
+</resources>
