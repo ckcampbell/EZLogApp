@@ -23,10 +23,10 @@
         android:id="@+id/btn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Button"
+        android:layout_centerHorizontal="true"
+        android:text="Load Inventory"
         app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        android:layout_centerHorizontal="true" />
+        app:layout_constraintRight_toRightOf="parent" />
 
     <ListView
         android:id="@+id/lv"

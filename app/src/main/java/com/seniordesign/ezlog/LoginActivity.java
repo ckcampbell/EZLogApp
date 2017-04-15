@@ -64,22 +64,35 @@ public class LoginActivity extends AppCompatActivity {
 
                 // Instantiate the RequestQueue.
                 RequestQueue queue = Volley.newRequestQueue(LoginActivity.this);
-                String url ="http://128.4.25.218:8080/EZLog/appLogin";
+                String url ="http://128.4.25.218:8080/EZlog/appLogin?user=" + username + "&pwd=" + password;
 
                 // Request a string response from the provided URL.
-                StringRequest stringRequest = new StringRequest(Request.Method.POST, url,
+                StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                     new Response.Listener<String>() {
                         @Override
                         public void onResponse(String response) {
-                            // Display the first 500 characters of the response string.
-                            text.setText("Response is: "+ response);
-                            Log.d("Response", response);
+                            if(response.equals("valid")){
+                                Intent i = new Intent(LoginActivity.this, UserAreaActivity.class);
+                                startActivity(i);
+                            }
+                            else{
+                                AlertDialog alertDialog = new AlertDialog.Builder(LoginActivity.this).create();
+                                alertDialog.setTitle("Invalid Login");
+                                alertDialog.setMessage("Incorrect Username or Password");
+                                alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+                                        new DialogInterface.OnClickListener() {
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                dialog.dismiss();
+                                            }
+                                        });
+                                alertDialog.show();
+                            }
                         }
                     },
                     new Response.ErrorListener() {
                         @Override
                         public void onErrorResponse(VolleyError error) {
-                            //text.setText(error.getMessage());
+                            text.setText(error.getMessage());
                         }
                     }
                 );
