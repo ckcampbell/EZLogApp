@@ -48,6 +48,8 @@ public class LoginActivity extends AppCompatActivity {
         final TextView homeLink = (TextView) findViewById(R.id.tvToHome);
         final TextView text = (TextView) findViewById(R.id.text);
 
+        displayError(getIntent());
+
         homeLink.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -71,11 +73,7 @@ public class LoginActivity extends AppCompatActivity {
                     new Response.Listener<String>() {
                         @Override
                         public void onResponse(String response) {
-                            if(response.equals("valid")){
-                                Intent i = new Intent(LoginActivity.this, UserAreaActivity.class);
-                                startActivity(i);
-                            }
-                            else{
+                            if(response.equals("invalid")){
                                 AlertDialog alertDialog = new AlertDialog.Builder(LoginActivity.this).create();
                                 alertDialog.setTitle("Invalid Login");
                                 alertDialog.setMessage("Incorrect Username or Password");
@@ -86,6 +84,12 @@ public class LoginActivity extends AppCompatActivity {
                                             }
                                         });
                                 alertDialog.show();
+                            }
+                            else{
+                                Intent i = new Intent(LoginActivity.this, UserAreaActivity.class);
+                                i.putExtra("SESSION_ID", response);
+                                i.putExtra("user", username);
+                                startActivity(i);
                             }
                         }
                     },
@@ -98,43 +102,23 @@ public class LoginActivity extends AppCompatActivity {
                 );
                 // Add the request to the RequestQueue.
                 queue.add(stringRequest);
-
-
-//                Response.Listener<String> responseListener = new Response.Listener<String>() {
-//                    @Override
-//                    public void onResponse(String response){
-//                        try {
-//                            JSONObject jsonResponse = new JSONObject(response);
-//                            boolean success = jsonResponse.getBoolean("success");
-//                            if(success){
-//                                Intent intent = new Intent(LoginActivity.this, UserArea_Home.class);
-//                                intent.putExtra("username", username);
-//                                intent.putExtra("password", password);
-//                                LoginActivity.this.startActivity(intent);
-//
-//                            }
-//                            else {
-//                                AlertDialog alertDialog = new AlertDialog.Builder(LoginActivity.this).create();
-//                                alertDialog.setTitle("Alert");
-//                                alertDialog.setMessage("Alert message to be shown");
-//                                alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
-//                                        new DialogInterface.OnClickListener() {
-//                                            public void onClick(DialogInterface dialog, int which) {
-//                                                dialog.dismiss();
-//                                            }
-//                                        });
-//                                alertDialog.show();
-//                            }
-//                        } catch (JSONException e) {
-//                            e.printStackTrace();
-//                        }
-//                    }
-//                };
-//                LoginRequest loginRequest = new LoginRequest(username, password, responseListener);
-//                RequestQueue queue = Volley.newRequestQueue(LoginActivity.this);
-//                queue.add(loginRequest);
             }
         });
+    }
+
+    public void displayError(Intent intent){
+        if(intent.hasExtra("ERROR")) {
+            AlertDialog alertDialog = new AlertDialog.Builder(LoginActivity.this).create();
+            alertDialog.setTitle("ERROR");
+            alertDialog.setMessage(intent.getStringExtra("ERROR"));
+            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    });
+            alertDialog.show();
+        }
     }
 }
 
