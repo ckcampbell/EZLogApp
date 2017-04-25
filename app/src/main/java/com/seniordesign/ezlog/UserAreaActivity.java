@@ -12,12 +12,15 @@ import android.os.Bundle;
 import android.support.v7.view.menu.ShowableListMenu;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
+import android.widget.Spinner;
+import android.widget.SpinnerAdapter;
 import android.widget.TextView;
 
 import com.android.volley.Request;
@@ -39,7 +42,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Queue;
 
-public class UserAreaActivity extends AppCompatActivity {
+public class UserAreaActivity extends AppCompatActivity implements AdapterView.OnItemSelectedListener {
 
     Button btnAction;
     Button btnBluetooth;
@@ -47,6 +50,7 @@ public class UserAreaActivity extends AppCompatActivity {
     TextView loginName;
     ArrayList<String> arrayList;
     ArrayAdapter<String> adapter;
+    Spinner spinner;
     private String user;
     private String session_id;
     private ArrayList<String> tableColumns = new ArrayList<String>();
@@ -64,6 +68,7 @@ public class UserAreaActivity extends AppCompatActivity {
         lv = (ListView) findViewById(R.id.lv);
         user = getIntent().getStringExtra("user");
         session_id = getIntent().getStringExtra("SESSION_ID");
+        spinner = (Spinner) findViewById(R.id.menu);
 
         // Prepare Array List
         arrayList = new ArrayList<String>();
@@ -75,41 +80,37 @@ public class UserAreaActivity extends AppCompatActivity {
         loadInventory(user, session_id);
         loadTableColumns();
         onLogoutClick();
-        onActionClick();
         onBluetoothClick();
+        spinner.setOnItemSelectedListener(this);
 
     }
 
-    public void onActionClick(){
-        btnAction.setOnClickListener(new View.OnClickListener() {
+    public void onActionSelect(String string){
+
+        final Dialog dialog = new Dialog(UserAreaActivity.this);
+        dialog.setContentView(R.layout.activity_input_popup);
+        dialog.setTitle("Add a New Item");
+
+        final LinearLayout dialogLayout = (LinearLayout)dialog.findViewById(R.id.linearLayout);
+        Button dialogButton = (Button)dialog.findViewById(R.id.button);
+
+        loadInputDialog(dialogLayout);
+        dialog.show();
+
+        dialogButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v){
-                final Dialog dialog = new Dialog(UserAreaActivity.this);
-                dialog.setContentView(R.layout.activity_input_popup);
-                dialog.setTitle("Add a New Item");
-
-                final LinearLayout dialogLayout = (LinearLayout)dialog.findViewById(R.id.linearLayout);
-                Button dialogButton = (Button)dialog.findViewById(R.id.button);
-
-                loadInputDialog(dialogLayout);
-                dialog.show();
-
-                dialogButton.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        Map<String, String> values = new HashMap<>();
-                        for(int i = 0; i < tableColumns.size(); i++){
-                            EditText view = (EditText) dialogLayout.getChildAt(i*2+1);
-                            String string = view.getText().toString();
-                            values.put(tableColumns.get(i), string);
-                        }
-                        JsonObjectRequest request = AddItemRequest.addItemRequest(user, session_id, values);
-                        RequestQueue queue = Volley.newRequestQueue(UserAreaActivity.this);
-                        queue.add(request);
-                        dialog.dismiss();
-                        loadInventory(user, session_id);
-                    }
-                });
+            public void onClick(View v) {
+                Map<String, String> values = new HashMap<>();
+                for(int i = 0; i < tableColumns.size(); i++){
+                    EditText view = (EditText) dialogLayout.getChildAt(i*2+1);
+                    String string = view.getText().toString();
+                    values.put(tableColumns.get(i), string);
+                }
+                JsonObjectRequest request = AddItemRequest.addItemRequest(user, session_id, values);
+                RequestQueue queue = Volley.newRequestQueue(UserAreaActivity.this);
+                queue.add(request);
+                dialog.dismiss();
+                loadInventory(user, session_id);
             }
         });
     }
@@ -125,7 +126,6 @@ public class UserAreaActivity extends AppCompatActivity {
             }
         });
     }
-
 
     private TextView createNewTextView(String text) {
         final RelativeLayout.LayoutParams lparams = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
@@ -187,6 +187,17 @@ public class UserAreaActivity extends AppCompatActivity {
                 queue.add(sr);
             }
         });
+    }
+
+    public void onItemSelected(AdapterView<?> parent, View view,
+                               int pos, long id) {
+        // An item was selected. You can retrieve the selected item using
+        String spinnerChoice = parent.getItemAtPosition(pos).toString();
+        onActionSelect(spinnerChoice);
+    }
+
+    public void onNothingSelected(AdapterView<?> arg0) {
+        // TODO Auto-generated method stub
     }
 
     public void loadInventory(String name, String id){

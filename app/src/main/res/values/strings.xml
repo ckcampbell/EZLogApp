@@ -5,6 +5,7 @@
     <string name="actions_prompt">Choose an Action</string>
 
     <string-array name="actionsArray" >
+        <item>Choose an Action...</item>
         <item>Add Item</item>
         <item>Remove Item</item>
         <item>Add Column</item>
