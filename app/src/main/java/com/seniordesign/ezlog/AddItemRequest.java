@@ -8,9 +8,13 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -19,10 +23,14 @@ import java.util.Map;
 
 public class AddItemRequest {
     public static JsonObjectRequest addItemRequest(String user, String sessionID, Map<String, String> values) {
-        String url = "http://128.4.25.218:8080/EZlog/appAddItem?user=" + user + "&sessionID=" + sessionID;
 
+        String url = "http://128.4.25.218:8080/EZlog/appAddItem?user=" + user + "&sessionID=" + sessionID;
+        Iterator it = values.entrySet().iterator();
+        while(it.hasNext()){
+            Map.Entry pair = (Map.Entry)it.next();
+            url += "&" + pair.getKey() + "=" + pair.getValue();
+        }
         JSONObject params = new JSONObject(values);
-        Log.d("printparams", params.toString());
         JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, params,
                 new Response.Listener<JSONObject>() {
                     public void onResponse(JSONObject response) {
@@ -37,4 +45,5 @@ public class AddItemRequest {
         );
         return request;
     }
+
 }

@@ -19,12 +19,34 @@
         android:gravity="center"
         android:textSize="24sp" />
 
+    <Spinner
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/menu"
+        android:layout_below="@+id/btnBluetooth"
+        android:entries="@array/actionsArray"
+        android:prompt="@string/actions_prompt"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
     <Button
-        android:id="@+id/btn"
+        android:id="@+id/btnAction"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
-        android:text="Add a New Item"
+        android:text="Confirm"
+        android:layout_below="@+id/menu"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent" />
+
+    <Button
+        android:id="@+id/btnBluetooth"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:text="Connect to Bluetooth"
         android:layout_below="@+id/userText"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent" />
@@ -33,7 +55,7 @@
         android:id="@+id/lv"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@+id/btn"
+        android:layout_below="@+id/btnAction"
         android:layout_alignParentEnd="true"
         android:layout_alignParentRight="true" />
 

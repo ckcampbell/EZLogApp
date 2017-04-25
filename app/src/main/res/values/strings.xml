@@ -2,4 +2,12 @@
     <string name="app_name">EZLog</string>
     <string name="button_open_login">Connect to an EZLog System</string>
     <string name="button_open_batch">Log an Inventory Offline</string>
+    <string name="actions_prompt">Choose an Action</string>
+
+    <string-array name="actionsArray" >
+        <item>Add Item</item>
+        <item>Remove Item</item>
+        <item>Add Column</item>
+        <item>Remove Column</item>
+    </string-array>
 </resources>
