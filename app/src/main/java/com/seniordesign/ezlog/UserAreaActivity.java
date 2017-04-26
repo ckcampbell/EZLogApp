@@ -12,13 +12,16 @@ import android.os.Bundle;
 import android.support.v7.view.menu.ShowableListMenu;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
+import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -36,21 +39,26 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
 public class UserAreaActivity extends AppCompatActivity {
 
-    Button btnAction;
+    Button btnAdd;
     Button btnBluetooth;
     ListView lv;
     TextView loginName;
     ArrayList<String> arrayList;
     ArrayAdapter<String> adapter;
+    Spinner spinner;
+
     private String user;
     private String session_id;
     private ArrayList<String> tableColumns = new ArrayList<String>();
     private Map<String, Integer> listIDs = new HashMap();
+    private JSONArray Inventory = null;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,8 +67,8 @@ public class UserAreaActivity extends AppCompatActivity {
 
         // Define XML variables
         loginName = (TextView) findViewById(R.id.userText);
-        btnAction = (Button) findViewById(R.id.btnAction);
         btnBluetooth = (Button) findViewById(R.id.btnBluetooth);
+        btnAdd = (Button) findViewById(R.id.addItem);
         lv = (ListView) findViewById(R.id.lv);
         user = getIntent().getStringExtra("user");
         session_id = getIntent().getStringExtra("SESSION_ID");
@@ -75,43 +83,23 @@ public class UserAreaActivity extends AppCompatActivity {
         loadInventory(user, session_id);
         loadTableColumns();
         onLogoutClick();
-        onActionClick();
         onBluetoothClick();
-
-    }
-
-    public void onActionClick(){
-        btnAction.setOnClickListener(new View.OnClickListener() {
+        lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
-            public void onClick(View v){
-                final Dialog dialog = new Dialog(UserAreaActivity.this);
-                dialog.setContentView(R.layout.activity_input_popup);
-                dialog.setTitle("Add a New Item");
-
-                final LinearLayout dialogLayout = (LinearLayout)dialog.findViewById(R.id.linearLayout);
-                Button dialogButton = (Button)dialog.findViewById(R.id.button);
-
-                loadInputDialog(dialogLayout);
-                dialog.show();
-
-                dialogButton.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        Map<String, String> values = new HashMap<>();
-                        for(int i = 0; i < tableColumns.size(); i++){
-                            EditText view = (EditText) dialogLayout.getChildAt(i*2+1);
-                            String string = view.getText().toString();
-                            values.put(tableColumns.get(i), string);
-                        }
-                        JsonObjectRequest request = AddItemRequest.addItemRequest(user, session_id, values);
-                        RequestQueue queue = Volley.newRequestQueue(UserAreaActivity.this);
-                        queue.add(request);
-                        dialog.dismiss();
-                        loadInventory(user, session_id);
-                    }
-                });
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                editItemAction(position);
             }
         });
+        btnAdd.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                addItemAction();
+            }
+        });
+
+
+
+
     }
 
     public void onBluetoothClick(){
@@ -125,7 +113,6 @@ public class UserAreaActivity extends AppCompatActivity {
             }
         });
     }
-
 
     private TextView createNewTextView(String text) {
         final RelativeLayout.LayoutParams lparams = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
@@ -150,6 +137,29 @@ public class UserAreaActivity extends AppCompatActivity {
         for (int i = 0; i < tableColumns.size(); i++){
             dialogLayout.addView(createNewTextView(tableColumns.get(i)));
             dialogLayout.addView(createNewEditText(tableColumns.get(i)));
+        }
+    }
+
+    private void loadEditDialog(LinearLayout dialogLayout, int position){
+        for (int i = 0; i < tableColumns.size(); i++){
+            TextView tv = createNewTextView(tableColumns.get(i));
+            EditText et = createNewEditText(tableColumns.get(i));
+            if(tableColumns.get(i).equals("ID")){
+                try {
+                    et.setText(Inventory.getJSONObject(position).getString(tableColumns.get(i)));
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+            else{
+                try {
+                    et.setText(Inventory.getJSONObject(position).getString(tableColumns.get(i)), TextView.BufferType.EDITABLE);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+            dialogLayout.addView(tv);
+            dialogLayout.addView(et);
         }
     }
 
@@ -218,7 +228,8 @@ public class UserAreaActivity extends AppCompatActivity {
                                 else {
                                     if(!response.equals(null)) {
                                         arrayList.clear();
-
+                                        Inventory = response;
+                                        Log.d("loadedinv",Inventory.toString());
                                         for (int i = 0; i < response.length(); i++) {
                                             try {
                                                 JSONObject item = response.getJSONObject(i);
@@ -286,4 +297,85 @@ public class UserAreaActivity extends AppCompatActivity {
         );
         queue.add(request);
     }
+
+    private void addItemAction() {
+        final Dialog dialog = new Dialog(UserAreaActivity.this);
+        dialog.setContentView(R.layout.activity_input_popup);
+        dialog.setTitle("Add a New Item");
+
+        final LinearLayout dialogLayout = (LinearLayout)dialog.findViewById(R.id.linearLayout);
+        Button dialogButton = (Button)dialog.findViewById(R.id.button);
+
+        loadInputDialog(dialogLayout);
+        dialog.show();
+
+        dialogButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Map<String, String> values = new HashMap<>();
+                for(int i = 0; i < tableColumns.size(); i++){
+                    EditText view = (EditText) dialogLayout.getChildAt(i*2+1);
+                    String string = view.getText().toString();
+                    values.put(tableColumns.get(i), string);
+                }
+                JsonObjectRequest request = AddItemRequest.addItemRequest(user, session_id, values);
+                RequestQueue queue = Volley.newRequestQueue(UserAreaActivity.this);
+                queue.add(request);
+                dialog.dismiss();
+                loadInventory(user, session_id);
+            }
+        });
+    }
+
+    private void editItemAction(final int position) {
+        if(Inventory != null) {
+            final Dialog dialog = new Dialog(UserAreaActivity.this);
+            dialog.setContentView(R.layout.activity_edit_item_popup);
+            dialog.setTitle("Edit Item");
+
+            final LinearLayout dialogLayout = (LinearLayout)dialog.findViewById(R.id.linearLayout);
+            Button editButton = (Button)dialog.findViewById(R.id.editButton);
+            Button deleteButton = (Button)dialog.findViewById(R.id.deleteButton);
+            Button cancelButton = (Button)dialog.findViewById(R.id.cancelButton);
+
+            loadEditDialog(dialogLayout, position);
+            dialog.show();
+
+            deleteButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                        JsonObjectRequest request = null;
+                        // continue with delete
+                        try {
+                            request = RemoveItemRequest.removeItemRequest(user, session_id, Inventory.getJSONObject(position).get("ID").toString());
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+
+                        RequestQueue queue = Volley.newRequestQueue(UserAreaActivity.this);
+                        queue.add(request);
+                        dialog.dismiss();
+                        loadInventory(user, session_id);
+                        Log.d("invafterdelete", Inventory.toString());
+                    }
+            });
+
+            cancelButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    dialog.dismiss();
+                }
+            });
+        }
+    }
+
+    private void addColumnAction() {
+
+    }
+
+    private void removeColumnAction() {
+
+    }
+
+
 }
