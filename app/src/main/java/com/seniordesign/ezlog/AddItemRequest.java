@@ -30,6 +30,7 @@ public class AddItemRequest {
             Map.Entry pair = (Map.Entry)it.next();
             url += "&" + pair.getKey() + "=" + pair.getValue();
         }
+        Log.d("url", url);
         JSONObject params = new JSONObject(values);
         JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, null,
                 new Response.Listener<JSONObject>() {

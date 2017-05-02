@@ -1,8 +1,15 @@
 <resources>
     <string name="app_name">EZLog</string>
     <string name="button_open_login">Connect to an EZLog System</string>
-    <string name="button_open_batch">Log an Inventory Offline</string>
+    <string name="button_open_batch">Log Inventory as a Guest</string>
     <string name="actions_prompt">Choose an Action</string>
+    <string name="title_other_devices" />
+    <string name="title_paired_devices" />
+    <string name="button_scan" />
+    <string name="none_paired" />
+    <string name="scanning" />
+    <string name="none_found" />
+    <string name="select_device" />
 
     <string-array name="actionsArray" >
         <item>Choose an Option...</item>

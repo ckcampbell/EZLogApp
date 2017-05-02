@@ -3,9 +3,13 @@ package com.seniordesign.ezlog;
 import android.annotation.TargetApi;
 import android.app.Dialog;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothProfile;
+import android.bluetooth.BluetoothSocket;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Build;
+import android.os.Handler;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -36,22 +40,27 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
+import java.util.UUID;
 
 public class UserAreaActivity extends AppCompatActivity {
 
     Button btnAdd;
     Button btnBluetooth;
     ListView lv;
+    ListView btList;
     TextView loginName;
     ArrayList<String> arrayList;
     ArrayAdapter<String> adapter;
-    Spinner spinner;
 
     private String user;
     private String session_id;
@@ -59,6 +68,17 @@ public class UserAreaActivity extends AppCompatActivity {
     private Map<String, Integer> listIDs = new HashMap();
     private JSONArray Inventory = null;
 
+    private BluetoothAdapter myBluetooth = null;
+    private Set<BluetoothDevice> pairedDevices;
+    BluetoothSocket mmSocket;
+    BluetoothDevice mmDevice;
+    OutputStream mmOutputStream;
+    InputStream mmInputStream;
+    Thread workerThread;
+    byte[] readBuffer;
+    int readBufferPosition;
+    int counter;
+    volatile boolean stopWorker;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,6 +90,7 @@ public class UserAreaActivity extends AppCompatActivity {
         btnBluetooth = (Button) findViewById(R.id.btnBluetooth);
         btnAdd = (Button) findViewById(R.id.addItem);
         lv = (ListView) findViewById(R.id.lv);
+        btList = (ListView) findViewById(R.id.btList);
         user = getIntent().getStringExtra("user");
         session_id = getIntent().getStringExtra("SESSION_ID");
 
@@ -93,7 +114,7 @@ public class UserAreaActivity extends AppCompatActivity {
         btnAdd.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                addItemAction();
+                addItemAction("-1");
             }
         });
 
@@ -108,10 +129,184 @@ public class UserAreaActivity extends AppCompatActivity {
 
             @Override
             public void onClick(View v){
-                BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                // Get the default adapter
+                myBluetooth = BluetoothAdapter.getDefaultAdapter();
 
+                // Enable Bluetooth
+                if(myBluetooth == null)
+                {
+                    //Show a message. that thedevice has no bluetooth adapter
+                    Toast.makeText(getApplicationContext(), "Bluetooth Device Not Available", Toast.LENGTH_LONG).show();
+                    //finish apk
+                    finish();
+                }
+                else
+                {
+                    if (myBluetooth.isEnabled())
+                    {
+                        pairedDevicesList();
+                    }
+                    else
+                    {
+                        //Ask to the user turn the bluetooth on
+                        Intent turnBTon = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                        startActivityForResult(turnBTon,1);
+                    }
+                }
             }
         });
+    }
+
+    private void pairedDevicesList(){
+        pairedDevices = myBluetooth.getBondedDevices();
+        ArrayList list = new ArrayList();
+
+        if (pairedDevices.size()>0)
+        {
+            for(BluetoothDevice bt : pairedDevices) {
+                if (bt.getName().equals("HC-05")) {
+                    list.add(bt.getName() + "\n" + bt.getAddress()); //Get the device's name and the address
+                }
+            }
+        }
+        else
+        {
+            Toast.makeText(getApplicationContext(), "No Paired Bluetooth Devices Found.", Toast.LENGTH_LONG).show();
+        }
+
+        final ArrayAdapter adapter = new ArrayAdapter(this,android.R.layout.simple_list_item_1, list);
+        btList.setAdapter(adapter);
+        btList.setOnItemClickListener(myListClickListener); //Method called when the device from the list is clicked
+    }
+
+    private AdapterView.OnItemClickListener myListClickListener = new AdapterView.OnItemClickListener()
+    {
+        public void onItemClick (AdapterView av, View v, int arg2, long arg3)
+        {
+            // Get the device MAC address, the last 17 chars in the View
+            String info = ((TextView) v).getText().toString();
+            String address = info.substring(info.length() - 17);
+
+            btList.setAdapter(null);
+            for(BluetoothDevice bt : pairedDevices)
+            {
+                if(bt.getAddress().equals(address)){
+                    Toast.makeText(UserAreaActivity.this, "Connected to: " + address, Toast.LENGTH_SHORT).show();
+                    mmDevice = bt;
+                    try {
+                        openBT();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        Log.d("problem", "here");
+                    }
+                }
+            }
+        }
+    };
+
+    void openBT() throws IOException    {
+
+        UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"); //Standard SerialPortService ID
+        mmSocket = mmDevice.createRfcommSocketToServiceRecord(uuid);
+        try {
+            mmSocket.connect();
+            Log.e("","Connected");
+        } catch (IOException e) {
+            Log.e("",e.getMessage());
+            try {
+                Log.e("","trying fallback...");
+
+                mmSocket =(BluetoothSocket) mmDevice.getClass().getMethod("createRfcommSocket", new Class[] {int.class}).invoke(mmDevice,1);
+                mmSocket.connect();
+
+                Log.e("","Connected");
+            }
+            catch (Exception e2) {
+                Log.e("failed", "Couldn't establish Bluetooth connection!");
+            }
+        }
+        mmOutputStream = mmSocket.getOutputStream();
+        mmInputStream = mmSocket.getInputStream();
+
+        beginListenForData();
+
+    }
+
+    void beginListenForData(){
+        final Handler handler = new Handler();
+        final byte delimiter = 10; //This is the ASCII code for a newline character
+
+        stopWorker = false;
+        readBufferPosition = 0;
+        readBuffer = new byte[1024];
+        workerThread = new Thread(new Runnable()
+        {
+            public void run()
+            {
+                while(!Thread.currentThread().isInterrupted() && !stopWorker)
+                {
+                    try
+                    {
+                        int bytesAvailable = mmInputStream.available();
+                        if(bytesAvailable > 0)
+                        {
+                            byte[] packetBytes = new byte[bytesAvailable];
+                            mmInputStream.read(packetBytes);
+                            for(int i=0;i<bytesAvailable;i++)
+                            {
+                                byte b = packetBytes[i];
+                                if(b == delimiter)
+                                {
+                                    byte[] encodedBytes = new byte[readBufferPosition];
+                                    System.arraycopy(readBuffer, 0, encodedBytes, 0, encodedBytes.length);
+                                    final String data = new String(encodedBytes, "US-ASCII");
+                                    final String data2 = data.substring(0, 26);
+                                    readBufferPosition = 0;
+
+                                    handler.post(new Runnable()
+                                    {
+                                        public void run()
+                                        {
+                                            if(inventoryPosition(data2) != -1){
+                                                editItemAction(inventoryPosition(data2));
+                                            }
+                                            else{
+                                                addItemAction(data2);
+                                            }
+                                        }
+                                    });
+                                }
+                                else
+                                {
+                                    readBuffer[readBufferPosition++] = b;
+                                }
+                            }
+                        }
+                    }
+                    catch (IOException ex)
+                    {
+                        stopWorker = true;
+                    }
+                }
+            }
+        });
+
+        workerThread.start();
+    }
+
+    private int inventoryPosition(String item_id){
+        for (int i = 0; i < Inventory.length(); i++){
+            JSONObject item = null;
+            try {
+                item = Inventory.getJSONObject(i);
+                if (item.get("ID").equals(item_id)){
+                    return i;
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+        return -1;
     }
 
     private TextView createNewTextView(String text) {
@@ -133,10 +328,15 @@ public class UserAreaActivity extends AppCompatActivity {
         return editText;
     }
 
-    private void loadInputDialog(LinearLayout dialogLayout){
+    private void loadInputDialog(LinearLayout dialogLayout, String item_id){
         for (int i = 0; i < tableColumns.size(); i++){
-            dialogLayout.addView(createNewTextView(tableColumns.get(i)));
-            dialogLayout.addView(createNewEditText(tableColumns.get(i)));
+            TextView tv = createNewTextView(tableColumns.get(i));
+            EditText et = createNewEditText(tableColumns.get(i));
+            if(tableColumns.get(i).equals("ID") && !item_id.equals("-1")){
+                et.setText(item_id);
+            }
+            dialogLayout.addView(tv);
+            dialogLayout.addView(et);
         }
     }
 
@@ -298,7 +498,7 @@ public class UserAreaActivity extends AppCompatActivity {
         queue.add(request);
     }
 
-    private void addItemAction() {
+    private void addItemAction(String item_id) {
         final Dialog dialog = new Dialog(UserAreaActivity.this);
         dialog.setContentView(R.layout.activity_input_popup);
         dialog.setTitle("Add a New Item");
@@ -306,7 +506,7 @@ public class UserAreaActivity extends AppCompatActivity {
         final LinearLayout dialogLayout = (LinearLayout)dialog.findViewById(R.id.linearLayout);
         Button dialogButton = (Button)dialog.findViewById(R.id.button);
 
-        loadInputDialog(dialogLayout);
+        loadInputDialog(dialogLayout, item_id);
         dialog.show();
 
         dialogButton.setOnClickListener(new View.OnClickListener() {
@@ -318,6 +518,7 @@ public class UserAreaActivity extends AppCompatActivity {
                     String string = view.getText().toString();
                     values.put(tableColumns.get(i), string);
                 }
+                Log.d("values", values.toString());
                 JsonObjectRequest request = AddItemRequest.addItemRequest(user, session_id, values);
                 RequestQueue queue = Volley.newRequestQueue(UserAreaActivity.this);
                 queue.add(request);
@@ -368,14 +569,5 @@ public class UserAreaActivity extends AppCompatActivity {
             });
         }
     }
-
-    private void addColumnAction() {
-
-    }
-
-    private void removeColumnAction() {
-
-    }
-
 
 }
